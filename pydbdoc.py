@@ -141,7 +141,7 @@ class DB:
         self.cursor.execute("SHOW TABLE STATUS WHERE name=%s ", table_name)
         return TableInfo._make(self.cursor.fetchone())
 
-    def output(self, dest, override):
+    def output(self, dest, override, gitlab=False):
 
         if not override and os.path.isfile(dest):
             raise ValueError('%s is exist.' % dest)
@@ -186,7 +186,15 @@ class DB:
             'title': ['字段名', '类型', '是否可NULL', '描述'],
             'data': [[column.name, column.field_type, column.if_null, column.comment.replace(os.linesep,'')] for column in columns],
         }
+
+        if gitlab:
+            _output.append('<details>')
+            _output.append('<summary>点击展开表结构</summary>')
+
         _output.append(generator.table(**_table_data))
+
+        if gitlab:
+            _output.append('</details>')
 
         _output.append(os.linesep)
 
@@ -207,6 +215,7 @@ if __name__ == '__main__':
     parser.add_argument('--name', default='test', help="数据库名称")
 
     parser.add_argument('-p', '--password', action='store_true', help="使用数据库密码")
+    parser.add_argument('--gitlab', action='store_true', help="支持gitlab的样式")
     parser.add_argument('-f', '--force', action="store_true", help="是否覆盖存在的md文件")
 
     args = parser.parse_args()
@@ -216,6 +225,7 @@ if __name__ == '__main__':
     db_user = args.user
     dest = args.dest
     force = args.force
+    gitlab = args.gitlab
 
     if not dest:
         parser.print_help()
@@ -228,6 +238,6 @@ if __name__ == '__main__':
 
     try:
         db = DB(db_host, db_user, db_password, db_name)
-        db.output(dest, force)
+        db.output(dest, force, gitlab)
     except Exception as e:
         print('Warning: %s' % str(e))
