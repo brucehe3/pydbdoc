@@ -14,6 +14,15 @@ Requirements
 
 Installation
 ------------
+
+本工具使用 `pymysql` 作为连接数据库的适配器，请先
+
+```bash
+pip install pymysql
+
+```
+
+
 将 `pydbdoc.py` 直接下载到相应代码目录下
 
 Documentation
