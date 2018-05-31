@@ -184,7 +184,7 @@ class DB:
         # 字段输出
         _table_data = {
             'title': ['字段名', '类型', '是否可NULL', '描述'],
-            'data': [[column.name, column.field_type, column.if_null, column.comment] for column in columns],
+            'data': [[column.name, column.field_type, column.if_null, column.comment.replace(os.linesep,'')] for column in columns],
         }
         _output.append(generator.table(**_table_data))
 
