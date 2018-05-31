@@ -178,7 +178,7 @@ class DB:
         if table.comment:
             _output.append(generator.comment(table.comment))
         else:
-            _output.append('未备注信息')
+            _output.append(generator.comment('未备注信息'))
 
         _output.append("%s %s" % (generator.highline(table.engine), generator.highline(table.collation)))
         # 字段输出
