@@ -8,6 +8,7 @@
 @Version 0.1
 """
 import os
+import re
 import argparse
 import pymysql
 import getpass
@@ -114,6 +115,63 @@ class DB:
 
         self.cursor = self.connection.cursor()
         self.md_generator = MDGenerator()
+        self.migration_tables = {}
+
+    def sync_from_migration(self, migration_path):
+        """
+        从migration同步  table comment
+        :return:
+        """
+        if not os.path.exists(migration_path):
+            raise AttributeError('The path is not found.')
+
+        if not os.path.isdir(migration_path):
+            raise AttributeError('The path should be a folder.')
+
+        migration_files = []
+        for dirpath, dirname, filenames in os.walk(migration_path):
+            for filename in filenames:
+                # 只读取php文件
+                if filename[-4:].lower() == '.php':
+                    migration_files.append(os.path.join(dirpath, filename))
+
+        # 读取并分析代码
+        self.find_comment_from_migration(migration_files)
+
+    def find_comment_from_migration(self, migration_files):
+        """
+        寻找特征注释文档
+        :return:
+        """
+        if not migration_files:
+            raise AttributeError('No need files to process.')
+
+        pattern = re.compile("Schema\:\:create\((.*?),[\s\S]*?\$table\->comment([\s\S]*?)\;")
+
+        # 读取文件找到所有符合的注释
+        for doc_name in migration_files:
+            with open(doc_name) as f:
+                try:
+                    php_content = f.read()
+                    results = pattern.findall(php_content)
+                    if results:
+                        self.split_table_comment(results)
+                except UnicodeDecodeError:
+                    pass
+                    # print(doc_name, '编码有误，跳过...')
+                except AttributeError as e:
+                    print(doc_name, str(e))
+
+    def split_table_comment(self, results):
+        """
+        切分表名和表注释
+        :param results:
+        :return:
+        """
+        for result in results:
+            table_name = result[0].strip(" '")
+            table_comment = result[1].strip(" '=")
+            self.migration_tables[table_name] = table_comment
 
     def get_tables(self):
         """
@@ -178,7 +236,10 @@ class DB:
         if table.comment:
             _output.append(generator.comment(table.comment))
         else:
-            _output.append(generator.comment('未备注信息'))
+            if table.name in self.migration_tables:
+                _output.append(generator.comment(self.migration_tables[table.name]))
+            else:
+                _output.append(generator.comment('未备注信息'))
 
         _output.append("%s %s" % (generator.highline(table.engine), generator.highline(table.collation)))
         # 字段输出
@@ -217,6 +278,7 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--password', action='store_true', help="使用数据库密码")
     parser.add_argument('--gitlab', action='store_true', help="支持gitlab的样式")
     parser.add_argument('-f', '--force', action="store_true", help="是否覆盖存在的md文件")
+    parser.add_argument('--migration', default='', help="指定migration目录")
 
     args = parser.parse_args()
 
@@ -226,6 +288,7 @@ if __name__ == '__main__':
     dest = args.dest
     force = args.force
     gitlab = args.gitlab
+    migration = args.migration
 
     if not dest:
         parser.print_help()
@@ -238,6 +301,9 @@ if __name__ == '__main__':
 
     try:
         db = DB(db_host, db_user, db_password, db_name)
+        if migration:
+            db.sync_from_migration(migration)
+
         db.output(dest, force, gitlab)
     except Exception as e:
         print('Warning: %s' % str(e))
