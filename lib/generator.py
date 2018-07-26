@@ -158,6 +158,20 @@ class GraghGenerator(BaseGenerator):
         </TABLE>
         """
 
+    def relation(self, table_a, table_b, label):
+        """
+        样式暂时不处理
+        :param table_a:
+        :param table_b:
+        :param label:
+        :return:
+        """
+
+        return """
+        %s -> %s
+        [label="%s"] [arrowhead=none, arrowtail=dot, dir=both];
+        """ % (table_a, table_b, label)
+
     def label(self, *args, **kwargs):
         """
         :return:
@@ -182,7 +196,10 @@ class GraghGenerator(BaseGenerator):
         if not data or not table_name:
             raise AttributeError('param is empty')
 
-        title = "%s(%s)" % (table_name, table_comment)
+        title = table_name
+        if table_comment:
+            title = "%s(%s)" % (table_name, table_comment)
+
         # 字段长度要保持一致
         output = [self._table_start(), self.title(title)]
 
