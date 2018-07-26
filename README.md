@@ -26,28 +26,34 @@ pip install pymysql
 ```
 
 
-将 `pydbdoc.py` 直接下载到相应代码目录下
+
 
 Documentation
 -------------
 
 ### 使用方式
 ```
-usage: pydbdoc.py [-h] [--host HOST] [--user USER] [--name NAME] [-p] [-f]
+usage: pydbdoc.py [-h] [--host HOST] [--user USER] [--name NAME] [-p]
+                  [--gitlab] [--graph] [-f] [--migration MIGRATION]
                   [dest]
 
-DB自文档化助手 0.1
+DB自文档化助手 0.2
 
 positional arguments:
-  dest            指定生成的文件地址 如：app/db.md
+  dest                  指定生成的文件地址 如：app/db.md
 
 optional arguments:
-  -h, --help      show this help message and exit
-  --host HOST     数据库地址
-  --user USER     数据库用户名
-  --name NAME     数据库名称
-  -p, --password  使用数据库密码
-  -f, --force     是否覆盖存在的md文件
+  -h, --help            show this help message and exit
+  --host HOST           数据库地址
+  --user USER           数据库用户名
+  --name NAME           数据库名称
+  -p, --password        使用数据库密码
+  --gitlab              支持gitlab的样式
+  --graph               导出png图片格式
+  -f, --force           是否覆盖存在的md文件
+  --migration MIGRATION
+                        指定migration目录
+
 
 ```
 
@@ -56,6 +62,13 @@ optional arguments:
 
 ```
 python pydbdoc.py db.md --name test -p
+
+```
+
+从本地`test`数据库导出为表关系图
+
+```
+python pydbdoc.py db.png --name test -p --graph
 
 ```
 
