@@ -181,7 +181,7 @@ class DB:
                 'table_name': table_name,
                 'table_comment': table_comment,
                 # 'columns': ['字段名', '类型', '是否可NULL', '描述'],
-                'data': [[column.name, column.field_type, column.if_null, column.comment] for
+                'data': [[column.name, column.field_type, column.if_null, column.comment.replace(os.linesep, '<br />')] for
                          column in columns],
             }
             _output.append(generator.label(**_table_data))
