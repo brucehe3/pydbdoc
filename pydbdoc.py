@@ -4,8 +4,8 @@
 读取数据库中的信息生成markdown文档
 ===========================================================================
 @Author Bruce He <hebin@comteck.cn>
-@Date  2018-05-31
-@Version 0.1
+@Date  2018-07-26
+@Version 0.2
 """
 import os
 import re
@@ -13,85 +13,7 @@ import argparse
 import pymysql
 import getpass
 from collections import namedtuple
-
-
-class MDGenerator:
-    """
-    生成MD格式文档
-    """
-
-    def __init__(self, data=''):
-        """
-        传入待处理数据
-        """
-        self.data = data
-
-    def title(self, text, font_size=1):
-        """
-        返回标题
-        :param text:
-        :param font_size: 1-5 对应 1-5号标题
-        :return:
-        """
-        if font_size not in (1, 2, 3, 4, 5,):
-            raise AttributeError('字号大小不正确')
-        return '#' * font_size + ' ' + text
-
-    def bold(self, text):
-
-        return '**%s**' % text
-
-    def comment(self, text):
-        return '> %s%s' % (text, os.linesep)
-
-    def highline(self, text):
-        return "`%s`" % text
-
-    def code(self, text, code_type=''):
-
-        return """```%s%s%s%s```""" % (code_type, os.linesep, text, os.linesep)
-
-    def newline(self):
-        return '---'
-
-    def table(self, *args, **kwargs):
-        """
-        表格输出
-        参数需要有tilte,alignment,data_list
-        :return:
-        """
-        title = kwargs.get('title')
-        alignment = kwargs.get('alignment')
-        data = kwargs.get('data')
-
-        if not isinstance(data, list) or not isinstance(title, list):
-            raise TypeError('param format is error')
-        if not data or not title:
-            raise AttributeError('param is empty')
-
-        length = len(title)
-
-        if not alignment:
-            alignment = [':---'] * length
-        # 字段长度要保持一致
-        output = [' | '.join(title), ' | '.join(alignment)]
-        for d in data:
-            data_string = ' | '.join(d)
-            if len(d) < length:
-                # 要补足
-                data_string += ' | ' * (length - len(d))
-
-            output.append(data_string)
-
-        return os.linesep.join(output)
-
-    def output(self):
-        """
-        输出文档
-        :param format:
-        :return:
-        """
-        pass
+from lib.generator import MDGenerator, GraghGenerator
 
 
 Column = namedtuple('Column', ['name', 'field_type', 'collation', 'if_null', 'key', 'default', 'extra', 'privileges',
@@ -115,6 +37,7 @@ class DB:
 
         self.cursor = self.connection.cursor()
         self.md_generator = MDGenerator()
+        self.graph_generator = GraghGenerator()
         self.migration_tables = {}
 
     def sync_from_migration(self, migration_path):
@@ -199,14 +122,108 @@ class DB:
         self.cursor.execute("SHOW TABLE STATUS WHERE name=%s ", table_name)
         return TableInfo._make(self.cursor.fetchone())
 
-    def output(self, dest, override, gitlab=False):
-
+    def init_path(self, dest, override):
+        """
+        路径初始化
+        :param dest:
+        :param override:
+        :return:
+        """
         if not override and os.path.isfile(dest):
             raise ValueError('%s is exist.' % dest)
 
         path, filename = os.path.split(dest)
         if path and not os.path.exists(path):
             os.makedirs(path)
+
+    def output(self, dest, override, gitlab=False, graph=False):
+        """
+        导出入口
+        :param graph:
+        :param dest:
+        :param override:
+        :param gitlab:
+        :return:
+        """
+        if graph:
+            self.output_graph(dest, override)
+        else:
+            self.output_markdown(dest, override, gitlab)
+
+    def output_graph(self, dest, override):
+        """
+        生成关系图像
+        :param dest:
+        :param override:
+        :return:
+        """
+        self.init_path(dest, override)
+        generator = self.graph_generator
+
+        _output = list()
+        tables = self.get_tables()
+        for table in tables:
+            table_name = table[0]
+            table_info = self.get_table_info(table_name)
+            columns = self.get_columns(table_name)
+
+            # 表名
+            table_name = table_info.name
+            table_comment = ''
+            if table.comment:
+                table_comment = table_info.comment
+            else:
+                if table_info.name in self.migration_tables:
+                    table_comment = self.migration_tables[table_info.name]
+            # 字段输出
+            _table_data = {
+                'table_name': table.name,
+                'table_comment': table_comment,
+                # 'columns': ['字段名', '类型', '是否可NULL', '描述'],
+                'data': [[column.name, column.field_type, column.if_null, column.comment.replace(os.linesep, '')] for
+                         column in columns],
+            }
+            _output.append(generator.label(**_table_data))
+
+        content = ''.join(_output)
+
+        with open(dest, 'w') as f:
+            f.write(content)
+
+    def format_db_graph(self, table, columns):
+        """
+        :param table:
+        :param columns:
+        :return:
+        """
+        generator = self.graph_generator
+
+        _output = list()
+
+        # 表名
+        table_name = table.name
+        table_comment = ''
+        if table.comment:
+            table_comment = table.comment
+        else:
+            if table.name in self.migration_tables:
+                table_comment = self.migration_tables[table.name]
+
+        # _output.append("%s %s" % (generator.highline(table.engine), generator.highline(table.collation)))
+        # 字段输出
+        _table_data = {
+            'table_name': table.name,
+            'table_comment': table_comment,
+            # 'columns': ['字段名', '类型', '是否可NULL', '描述'],
+            'data': [[column.name, column.field_type, column.if_null, column.comment.replace(os.linesep, '')] for column
+                     in columns],
+        }
+        _output.append(generator.label(**_table_data))
+        return _output
+
+    def output_markdown(self, dest, override, gitlab=False):
+
+        self.init_path(dest, override)
 
         _output = list()
         tables = self.get_tables()
@@ -278,6 +295,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-p', '--password', action='store_true', help="使用数据库密码")
     parser.add_argument('--gitlab', action='store_true', help="支持gitlab的样式")
+    parser.add_argument('--graph', action='store_true', help="导出png图片格式")
     parser.add_argument('-f', '--force', action="store_true", help="是否覆盖存在的md文件")
     parser.add_argument('--migration', default='', help="指定migration目录")
 
@@ -289,6 +307,7 @@ if __name__ == '__main__':
     dest = args.dest
     force = args.force
     gitlab = args.gitlab
+    graph = args.graph
     migration = args.migration
 
     if not dest:
@@ -305,6 +324,6 @@ if __name__ == '__main__':
         if migration:
             db.sync_from_migration(migration)
 
-        db.output(dest, force, gitlab)
+        db.output(dest, force, gitlab, graph)
     except Exception as e:
         print('Warning: %s' % str(e))
