@@ -12,6 +12,7 @@ import re
 import argparse
 import pymysql
 import getpass
+from pygraphviz import AGraph
 from collections import namedtuple
 from lib.generator import MDGenerator, GraghGenerator
 
@@ -170,14 +171,14 @@ class DB:
             # 表名
             table_name = table_info.name
             table_comment = ''
-            if table.comment:
+            if table_info.comment:
                 table_comment = table_info.comment
             else:
                 if table_info.name in self.migration_tables:
                     table_comment = self.migration_tables[table_info.name]
             # 字段输出
             _table_data = {
-                'table_name': table.name,
+                'table_name': table_name,
                 'table_comment': table_comment,
                 # 'columns': ['字段名', '类型', '是否可NULL', '描述'],
                 'data': [[column.name, column.field_type, column.if_null, column.comment.replace(os.linesep, '')] for
@@ -189,8 +190,8 @@ class DB:
 
         content = generator.graph(labels, '')
 
-        with open(dest, 'w') as f:
-            f.write(content)
+        A = AGraph(string=content)
+        A.draw(dest, 'png', 'circo')
 
     def output_markdown(self, dest, override, gitlab=False):
 

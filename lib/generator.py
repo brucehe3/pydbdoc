@@ -77,6 +77,7 @@ class MDGenerator(BaseGenerator):
         # 字段长度要保持一致
         output = [' | '.join(title), ' | '.join(alignment)]
         for d in data:
+
             data_string = ' | '.join(d)
             if len(d) < length:
                 # 要补足
@@ -118,7 +119,11 @@ class GraghGenerator(BaseGenerator):
               
               %s 
             }
-        """
+        """ % (labels, relations)
+
+    def convert(self, name):
+
+        return name.replace('<', '&lt;').replace('>', '&gt;')
 
     def field(self, *args):
         """
@@ -128,7 +133,7 @@ class GraghGenerator(BaseGenerator):
 
         fields = []
         for arg in args:
-            fields.append("""<TD ALIGN="LEFT" BORDER="0"><FONT FACE="Helvetica ">%s</FONT></TD>""" % arg)
+            fields.append("""<TD ALIGN="LEFT" BORDER="0"><FONT FACE="Helvetica ">%s </FONT></TD>""" % self.convert(arg))
 
         return """<TR>%s</TR>""" % (''.join(fields),)
 
@@ -138,16 +143,20 @@ class GraghGenerator(BaseGenerator):
         :param name:
         :return:
         """
-        return """<TR><TD COLSPAN="3" CELLPADDING="4" ALIGN="CENTER" BGCOLOR="olivedrab4">
+        return """<TR><TD COLSPAN="4" CELLPADDING="4" ALIGN="CENTER" BGCOLOR="olivedrab4">
         <FONT FACE="Helvetica Bold" COLOR="white" >%s</FONT>
         </TD></TR>
         """ % name
 
     def _table_start(self):
-        return """<TABLE BGCOLOR="palegoldenrod" BORDER="0" CELLBORDER="0" CELLSPACING="0">"""
+        return """
+        <TABLE BGCOLOR="palegoldenrod" BORDER="0" CELLBORDER="0" CELLSPACING="0">
+        """
 
     def _table_end(self):
-        return """</TABLE>"""
+        return """
+        </TABLE>
+        """
 
     def label(self, *args, **kwargs):
         """
@@ -156,7 +165,9 @@ class GraghGenerator(BaseGenerator):
 
         table_name = kwargs.get('table_name')
 
-        return "mis_models_%s[label = <%s>]" % (table_name, self.table(*args, **kwargs))
+        _label = "mis_models_%s[label = <%s>]" % (table_name, self.table(*args, **kwargs))
+
+        return os.linesep + _label + os.linesep
 
     def table(self, *args, **kwargs):
         """

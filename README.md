@@ -1,16 +1,19 @@
 pydbdoc
 ===================
 
-从MySQL数据库读取表信息并转为markdown文档
+1. 从MySQL数据库读取表信息并转为markdown文档
+
+2. 支持生成png格式的关系图
 
 Author: Bruce He <bruce@shbewell.com>
 
-Version: `0.1`
+Version: `0.2`
 
 Requirements
 -------------
 * Python(2.7,3.4,3.5,3.6)
 * pymysql
+* pygraphviz
 
 Installation
 ------------
