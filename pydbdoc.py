@@ -185,41 +185,12 @@ class DB:
             }
             _output.append(generator.label(**_table_data))
 
-        content = ''.join(_output)
+        labels = ''.join(_output)
+
+        content = generator.graph(labels, '')
 
         with open(dest, 'w') as f:
             f.write(content)
-
-    def format_db_graph(self, table, columns):
-        """
-        :param table:
-        :param columns:
-        :return:
-        """
-        generator = self.graph_generator
-
-        _output = list()
-
-        # 表名
-        table_name = table.name
-        table_comment = ''
-        if table.comment:
-            table_comment = table.comment
-        else:
-            if table.name in self.migration_tables:
-                table_comment = self.migration_tables[table.name]
-
-        # _output.append("%s %s" % (generator.highline(table.engine), generator.highline(table.collation)))
-        # 字段输出
-        _table_data = {
-            'table_name': table.name,
-            'table_comment': table_comment,
-            # 'columns': ['字段名', '类型', '是否可NULL', '描述'],
-            'data': [[column.name, column.field_type, column.if_null, column.comment.replace(os.linesep, '')] for column
-                     in columns],
-        }
-        _output.append(generator.label(**_table_data))
-        return _output
 
     def output_markdown(self, dest, override, gitlab=False):
 
